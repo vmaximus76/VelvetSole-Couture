@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------
+// 1. MULTI-TENANT FRANCHISE ARCHITECTURE
+// --------------------------------------------------
+model Tenant {
+  id           String   @id @default(uuid())
+  brandName    String
+  domain       String   @unique
+  ccbillSubAcc String?
+  // The specific 4-digit CCBill sub-account for this franchisee
+  createdAt    DateTime @default(now())
+
+  users    User[]
+  videos   BaseVideo[]
+  products Product[]
+}
+
+// --------------------------------------------------
+// 2. USER PROFILES & NEXTAUTH
+// --------------------------------------------------
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  passwordHash  String?
+  role          String    @default("SUBSCRIBER") // SUBSCRIBER, CREATOR, ADMIN
+  createdAt     DateTime  @default(now())
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  subscriptions Subscription[]
+  renderJobs    RenderJob[]
+  accounts      Account[]
+  sessions      Session[]
+  purchases     Purchase[]
+}
+
+// --------------------------------------------------
+// 2b. NEXTAUTH ADAPTER MODELS (required by @auth/prisma-adapter)
+// --------------------------------------------------
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --------------------------------------------------
+// 3. CCBILL PAYMENT & SUBSCRIPTION ROUTING
+// --------------------------------------------------
+model Subscription {
+  id                   String    @id @default(uuid())
+  userId               String
+  ccbillSubscriptionId String    @unique // Captured from CCBill Webhook
+  status               String // e.g., ACTIVE, CANCELED, EXPIRED
+  tier                 String // e.g., VIP, BASIC
+  nextBillingDate      DateTime?
+  createdAt            DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// --------------------------------------------------
+// 4. FEDERAL 2257 COMPLIANCE & BASE ASSETS
+// --------------------------------------------------
+model BaseVideo {
+  id             String   @id @default(uuid())
+  tenantId       String
+  title          String
+  performerName  String
+  documentId2257 String
+  // Reference/pointer to the model ID & release stored in the secure compliance vault
+  s3Url          String // Secure AWS S3 path of the original raw footage
+  createdAt      DateTime @default(now())
+
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  syntheticOutputs RenderJob[]
+}
+
+// --------------------------------------------------
+// 5. DECOUPLED AI QUEUE ("PLUGGABLE WORKER")
+// --------------------------------------------------
+model RenderJob {
+  id          String   @id @default(uuid())
+  userId      String
+  baseVideoId String
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  parameters  Json // Opaque job spec consumed by the external processing worker
+  resultS3Url String?
+  // Populated by the external processing worker via callback once complete
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  baseVideo BaseVideo @relation(fields: [baseVideoId], references: [id])
+}
+
+// --------------------------------------------------
+// 6. STOREFRONT CATALOG (finished, pre-published assets)
+// --------------------------------------------------
+model Product {
+  id               String   @id @default(uuid())
+  tenantId         String
+  title            String
+  description      String
+  priceCents       Int
+  thumbnailUrl     String?
+  // S3 object key of the deliverable video file, distinct from the public thumbnailUrl preview.
+  // Optional for now — products can be published before the deliverable is attached.
+  deliverableS3Key String?
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  purchases Purchase[]
+
+  @@unique([tenantId, title])
+}
+
+// --------------------------------------------------
+// 7. BUYER PURCHASES (product access grants)
+// --------------------------------------------------
+model Purchase {
+  id                  String   @id @default(uuid())
+  userId              String
+  productId           String
+  ccbillTransactionId String   @unique // Idempotency key for webhook retries
+  createdAt           DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
