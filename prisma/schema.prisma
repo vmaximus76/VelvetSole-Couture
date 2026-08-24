@@ -15,12 +15,14 @@ model Tenant {
   brandName    String
   domain       String   @unique
   ccbillSubAcc String?
-  // The specific 4-digit CCBill sub-account for this franchisee
+  syntheticGenerationEnabled Boolean @default(false)
   createdAt    DateTime @default(now())
 
-  users    User[]
-  videos   BaseVideo[]
-  products Product[]
+  users          User[]
+  videos         BaseVideo[]
+  products       Product[]
+  digitalModels  DigitalModel[]
+  generationJobs GenerationJob[]
 }
 
 // --------------------------------------------------
@@ -40,9 +42,10 @@ model User {
   tenant        Tenant         @relation(fields: [tenantId], references: [id])
   subscriptions Subscription[]
   renderJobs    RenderJob[]
-  accounts      Account[]
-  sessions      Session[]
-  purchases     Purchase[]
+  accounts       Account[]
+  sessions       Session[]
+  purchases      Purchase[]
+  generationJobs GenerationJob[]
 }
 
 // --------------------------------------------------
@@ -109,7 +112,8 @@ model BaseVideo {
   performerName  String
   documentId2257 String
   // Reference/pointer to the model ID & release stored in the secure compliance vault
-  s3Url          String // Secure AWS S3 path of the original raw footage
+  s3Url          String
+  contentSource  String   @default("REAL") // REAL | AI_SYNTHETIC
   createdAt      DateTime @default(now())
 
   tenant           Tenant      @relation(fields: [tenantId], references: [id])
@@ -156,7 +160,40 @@ model Product {
 }
 
 // --------------------------------------------------
-// 7. BUYER PURCHASES (product access grants)
+// 7. SYNTHETIC PIPELINE — DIGITAL MODELS & GENERATION JOBS
+// --------------------------------------------------
+model DigitalModel {
+  id               String   @id @default(uuid())
+  tenantId         String
+  name             String
+  identityAssetKey String   // S3 key for trained LoRA weights / embedding
+  createdAt        DateTime @default(now())
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  generationJobs GenerationJob[]
+}
+
+model GenerationJob {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  userId              String
+  digitalModelId      String?
+  prompt              String
+  poseReferenceS3Key  String?
+  outputType          String   @default("VIDEO") // IMAGE | VIDEO
+  status              String   @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  parameters          Json
+  resultS3Url         String?
+  promotedBaseVideoId String?  // Set after "Promote to Base Library" action runs
+  createdAt           DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  digitalModel DigitalModel? @relation(fields: [digitalModelId], references: [id])
+}
+
+// --------------------------------------------------
+// 8. BUYER PURCHASES (product access grants)
 // --------------------------------------------------
 model Purchase {
   id                  String   @id @default(uuid())

@@ -25,6 +25,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             {canUpload && <NavLink href="/dashboard/library">Asset Library</NavLink>}
             {canUpload && <NavLink href="/dashboard/inventory">Inventory</NavLink>}
             {canUpload && <NavLink href="/dashboard/generate">AI Generate</NavLink>}
+            {canUpload && <NavLink href="/dashboard/digital-models">Digital Models</NavLink>}
+            {canUpload && <NavLink href="/dashboard/generate-poses">Generate Poses</NavLink>}
             {session.user.role === "ADMIN" && (
               <NavLink href="/admin/tenants">Franchise</NavLink>
             )}
