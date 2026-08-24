@@ -22,7 +22,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <nav className="mt-10 flex flex-col gap-1">
             <NavLink href="/dashboard">Overview</NavLink>
             {canUpload && <NavLink href="/dashboard/upload">Upload Studio</NavLink>}
+            {canUpload && <NavLink href="/dashboard/library">Asset Library</NavLink>}
             {canUpload && <NavLink href="/dashboard/inventory">Inventory</NavLink>}
+            {canUpload && <NavLink href="/dashboard/generate">AI Generate</NavLink>}
+            {session.user.role === "ADMIN" && (
+              <NavLink href="/admin/tenants">Franchise</NavLink>
+            )}
           </nav>
         </div>
 

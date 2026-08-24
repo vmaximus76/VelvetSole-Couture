@@ -40,3 +40,31 @@ export async function createBaseVideo(input: CreateBaseVideoInput) {
   revalidatePath("/dashboard/upload");
   return video;
 }
+
+const confirmS3UploadSchema = z.object({
+  videoId: z.string().uuid(),
+  s3Key: z.string().trim().min(1),
+});
+
+export async function confirmS3Upload(input: z.infer<typeof confirmS3UploadSchema>) {
+  const session = await auth();
+  if (!session?.user || !UPLOAD_ROLES.has(session.user.role)) {
+    throw new Error("Forbidden");
+  }
+
+  const { videoId, s3Key } = confirmS3UploadSchema.parse(input);
+
+  // tenantId check prevents one tenant from overwriting another's record
+  const existing = await prisma.baseVideo.findFirst({
+    where: { id: videoId, tenantId: session.user.tenantId },
+  });
+  if (!existing) throw new Error("Video not found");
+
+  const updated = await prisma.baseVideo.update({
+    where: { id: videoId },
+    data: { s3Url: s3Key },
+  });
+
+  revalidatePath("/dashboard/upload");
+  return updated;
+}
