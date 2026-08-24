@@ -32,11 +32,13 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
 
   const parsed = createGenerationJobSchema.parse(input);
 
+  let digitalModelLoraKey: string | null = null;
   if (parsed.digitalModelId) {
     const model = await prisma.digitalModel.findFirst({
       where: { id: parsed.digitalModelId, tenantId: session.user.tenantId },
     });
     if (!model) throw new Error("Digital model not found");
+    digitalModelLoraKey = model.identityAssetKey;
   }
 
   const job = await prisma.generationJob.create({
@@ -55,11 +57,12 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
   await getRedis().rpush(
     GENERATION_QUEUE_KEY,
     JSON.stringify({
-      jobId:              job.id,
-      digitalModelId:     job.digitalModelId,
-      prompt:             job.prompt,
-      poseReferenceS3Key: job.poseReferenceS3Key,
-      parameters:         job.parameters,
+      jobId:               job.id,
+      digitalModelId:      job.digitalModelId,
+      digitalModelLoraKey, // resolved S3 key — worker uses this directly, no DB lookup needed
+      prompt:              job.prompt,
+      poseReferenceS3Key:  job.poseReferenceS3Key,
+      parameters:          job.parameters,
     }),
   );
 
