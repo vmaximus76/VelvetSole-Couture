@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "../../../auth";
 import { prisma } from "@/lib/prisma";
 import { getRedis } from "@/lib/redis";
+import refinePromptWithClaude from "@/lib/claude";
 
 const GENERATION_QUEUE_KEY = "generation-jobs:queue";
 const ALLOWED = new Set(["CREATOR", "ADMIN"]);
@@ -32,6 +33,17 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
 
   const parsed = createGenerationJobSchema.parse(input);
 
+  // If caller requested Claude refinement, attempt it (non-fatal)
+  let finalPrompt = parsed.prompt;
+  if (parsed.parameters && (parsed.parameters as any).useClaude) {
+    try {
+      finalPrompt = await refinePromptWithClaude(parsed.prompt);
+    } catch (err) {
+      // log and continue with original prompt
+      console.error("Claude prompt refinement failed:", err instanceof Error ? err.message : err);
+    }
+  }
+
   let digitalModelLoraKey: string | null = null;
   if (parsed.digitalModelId) {
     const model = await prisma.digitalModel.findFirst({
@@ -46,7 +58,7 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
       tenantId:           session.user.tenantId,
       userId:             session.user.id,
       digitalModelId:     parsed.digitalModelId ?? null,
-      prompt:             parsed.prompt,
+      prompt:             finalPrompt,
       poseReferenceS3Key: parsed.poseReferenceS3Key ?? null,
       outputType:         parsed.outputType,
       status:             "PENDING",

@@ -39,3 +39,28 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sensitive credential files — never commit
+recovery-codes.txt
+*.csv
+*accessKeys*
+
+# design assets at repo root only (fonts, images, PSDs, ZIPs)
+/*.ttf
+/*.otf
+/*.zip
+/*.psd
+/*.ai
+/*.eps
+/*.jpg
+/*.jpeg
+/*.png
+/*.svg
+/*.webp
+/couture-font/
+/feet/
+/luxury-elegant-black-seamless-pattern/
+/luxury-elegant-black-seamless-pattern 2/
+/vecteezy_*
+/magnific_*
+/generation-worker/

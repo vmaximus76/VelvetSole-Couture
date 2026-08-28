@@ -1,112 +1,128 @@
 import Link from "next/link";
+import { auth } from "../../auth";
+import { SiteNav } from "@/components/site/SiteNav";
+import { HeroShape } from "@/components/site/HeroShape";
+import { EnterStudioButton } from "@/components/site/EnterStudioButton";
 
-export default function Home() {
+const PAGE_BG: React.CSSProperties = {
+  background: "#141214",
+  backgroundImage: "linear-gradient(138deg, #2b2430 0%, #1c181d 42%, #111012 100%)",
+  backgroundAttachment: "fixed",
+  minHeight: "100vh",
+  color: "#ede9e4",
+};
+
+export default async function HomePage() {
+  const session = await auth();
+
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-neutral-950">
-      {/* Ambient glow effects */}
-      <div
-        className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-20 blur-[120px]"
-        style={{ background: "radial-gradient(circle, #881337 0%, transparent 70%)" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full opacity-10 blur-[100px]"
-        style={{ background: "radial-gradient(circle, #881337 0%, transparent 70%)" }}
-      />
+    <div style={PAGE_BG}>
+      <SiteNav session={session} />
 
-      {/* Subtle grid overlay */}
+      {/* Accent stripe — 1300px centered */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ height: 1, background: "#750851", width: "100%", maxWidth: 1300 }} />
+      </div>
+
+      {/* Hero shape container */}
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 28px", position: "relative" }}>
+        <div style={{ position: "relative", width: "100%", height: 480 }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <HeroShape />
+          </div>
+        </div>
+      </div>
+
+      {/* Below hero: copy left, CTA right */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "40px 28px 96px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 48,
+          alignItems: "center",
         }}
-      />
-
-      {/* Navigation */}
-      <nav className="absolute top-0 z-10 flex w-full items-center justify-between px-8 py-6 md:px-16">
-        <p className="text-[10px] uppercase tracking-[0.35em] text-neutral-500">
-          VelvetSole Couture
-        </p>
-        <div className="flex items-center gap-6">
-          <Link
-            href="/store"
-            className="text-xs uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-100"
+      >
+        <div>
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant), Georgia, serif",
+              fontSize: "1.22rem",
+              fontWeight: 300,
+              lineHeight: 1.80,
+              color: "#7e7a84",
+              maxWidth: "40ch",
+            }}
           >
-            Store
-          </Link>
-          <Link
-            href="/login"
-            className="text-xs uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-100"
+            <em style={{ fontStyle: "italic", color: "#ede9e4" }}>Exclusive digital experiences</em>{" "}
+            curated for the discerning collector. Artfully crafted content where aesthetic meets desire.
+          </p>
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant), Georgia, serif",
+              fontSize: "1.22rem",
+              fontWeight: 300,
+              lineHeight: 1.80,
+              color: "#7e7a84",
+              maxWidth: "40ch",
+              marginTop: 22,
+            }}
           >
-            Sign In
-          </Link>
+            A private studio of AI-crafted and creator-produced works. Every piece a statement. Every session an experience.
+          </p>
         </div>
-      </nav>
 
-      {/* Hero */}
-      <main className="relative z-10 flex max-w-2xl flex-col items-center px-6 text-center">
-        {/* Decorative line */}
-        <div className="mb-10 h-px w-16 bg-gradient-to-r from-transparent via-rose-900/60 to-transparent" />
-
-        <p
-          className="mb-4 text-[11px] uppercase tracking-[0.4em] text-rose-400/70"
-          style={{ animationDelay: "0.1s" }}
-        >
-          Real Motion · Infinite Skins
-        </p>
-
-        <h1 className="text-4xl font-extralight leading-tight tracking-wide text-neutral-100 md:text-6xl md:leading-tight">
-          Premium Content,{" "}
-          <span className="bg-gradient-to-r from-rose-300 via-rose-400 to-rose-600 bg-clip-text text-transparent">
-            Reimagined
-          </span>
-        </h1>
-
-        <p className="mt-6 max-w-md text-sm leading-relaxed text-neutral-500 md:text-base">
-          One session. Infinite variations. AI-powered visual transformation
-          that preserves authentic motion and studio-grade quality.
-        </p>
-
-        {/* CTA buttons */}
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-          <Link
-            href="/store"
-            id="cta-browse"
-            className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-full px-8 text-xs font-medium uppercase tracking-widest text-rose-50 transition-all duration-300"
-          >
-            <span
-              className="absolute inset-0 bg-gradient-to-r from-rose-900 to-rose-800 transition-opacity duration-300 group-hover:opacity-90"
-            />
-            <span
-              className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+          {session?.user ? (
+            <EnterStudioButton />
+          ) : (
+            <Link
+              href="/login"
               style={{
-                background:
-                  "radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 264,
+                height: 152,
+                borderRadius: "50%",
+                border: "1px solid rgba(117,8,81,0.45)",
+                color: "#7e7a84",
+                fontFamily: "var(--font-jost), system-ui, sans-serif",
+                fontSize: "0.82rem",
+                fontWeight: 400,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                textDecoration: "none",
               }}
-            />
-            <span className="relative">Browse Collection</span>
-          </Link>
-
-          <Link
-            href="/login"
-            id="cta-creator"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-neutral-800 px-8 text-xs font-medium uppercase tracking-widest text-neutral-400 transition-all duration-300 hover:border-neutral-600 hover:text-neutral-200"
-          >
-            Creator Access
-          </Link>
+            >
+              Sign In to Enter
+            </Link>
+          )}
         </div>
+      </div>
 
-        {/* Trust line */}
-        <div className="mt-16 flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-neutral-600">
-          <span className="h-px w-8 bg-neutral-800" />
-          Studio Quality · AI Enhanced · Secure Delivery
-          <span className="h-px w-8 bg-neutral-800" />
-        </div>
-      </main>
-
-      {/* Bottom decorative line */}
-      <div className="absolute bottom-12 h-px w-32 bg-gradient-to-r from-transparent via-neutral-800 to-transparent" />
+      {/* Footer */}
+      <footer
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.055)",
+          padding: "24px 28px",
+          textAlign: "center",
+          color: "#7e7a84",
+          fontSize: "0.76rem",
+          letterSpacing: "0.06em",
+          opacity: 0.7,
+          fontFamily: "var(--font-jost), system-ui, sans-serif",
+        }}
+      >
+        &copy; 2026 VelvetSole Couture &nbsp;&middot;&nbsp;
+        <Link href="/2257" style={{ color: "inherit", textDecoration: "none" }}>18 U.S.C. &sect;&nbsp;2257</Link>
+        &nbsp;&middot;&nbsp;
+        <Link href="/privacy-policy" style={{ color: "inherit", textDecoration: "none" }}>Privacy</Link>
+        &nbsp;&middot;&nbsp;
+        <Link href="/terms-of-service" style={{ color: "inherit", textDecoration: "none" }}>Terms</Link>
+      </footer>
     </div>
   );
 }
