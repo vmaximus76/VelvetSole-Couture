@@ -14,7 +14,7 @@ const createGenerationJobSchema = z.object({
   prompt:            z.string().min(1).max(1000),
   poseReferenceS3Key: z.string().optional(),
   outputType:        z.enum(["IMAGE", "VIDEO"]).default("VIDEO"),
-  parameters:        z.record(z.unknown()).default({}),
+  parameters:        z.record(z.string(), z.any()).default({}),
 });
 
 export type CreateGenerationJobInput = z.infer<typeof createGenerationJobSchema>;
