@@ -3,11 +3,10 @@ import { auth } from "../../auth";
 import { SiteNav } from "@/components/site/SiteNav";
 import { HeroShape } from "@/components/site/HeroShape";
 import { EnterStudioButton } from "@/components/site/EnterStudioButton";
+import { JoinButton } from "@/components/site/JoinButton";
 
 const PAGE_BG: React.CSSProperties = {
-  background: "#141214",
-  backgroundImage: "linear-gradient(138deg, #2b2430 0%, #1c181d 42%, #111012 100%)",
-  backgroundAttachment: "fixed",
+  background: "#0a0a0a",
   minHeight: "100vh",
   color: "#ede9e4",
 };
@@ -74,32 +73,28 @@ export default async function HomePage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
           {session?.user ? (
             <EnterStudioButton />
           ) : (
-            <Link
-              href="/login"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 264,
-                height: 152,
-                borderRadius: "50%",
-                border: "1px solid rgba(117,8,81,0.45)",
-                color: "#7e7a84",
-                fontFamily: "var(--font-jost), system-ui, sans-serif",
-                fontSize: "0.82rem",
-                fontWeight: 400,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                textDecoration: "none",
-              }}
-            >
-              Sign In to Enter
-            </Link>
+            <JoinButton />
           )}
+          <Link
+            href="/store"
+            style={{
+              color: "#7e7a84",
+              fontFamily: "var(--font-jost), system-ui, sans-serif",
+              fontSize: "0.78rem",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              textDecoration: "none",
+              borderBottom: "1px solid rgba(126,122,132,0.30)",
+              paddingBottom: 2,
+              transition: "color 0.2s, border-color 0.2s",
+            }}
+          >
+            Browse Collection
+          </Link>
         </div>
       </div>
 

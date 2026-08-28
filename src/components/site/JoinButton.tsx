@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmAge } from "@/app/actions/age-gate";
 
-export function EnterStudioButton() {
+export function JoinButton() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const router = useRouter();
@@ -12,7 +12,7 @@ export function EnterStudioButton() {
   async function handleConfirm() {
     setPending(true);
     await confirmAge();
-    router.push("/generate");
+    router.push("/register");
   }
 
   return (
@@ -26,8 +26,8 @@ export function EnterStudioButton() {
           width: 264,
           height: 152,
           borderRadius: "50%",
-          background: "#750851",
-          border: "1.5px solid rgba(255,255,255,0.12)",
+          background: "transparent",
+          border: "1.5px solid rgba(117,8,81,0.55)",
           color: "#ede9e4",
           fontFamily: "var(--font-jost), system-ui, sans-serif",
           fontSize: "0.82rem",
@@ -35,21 +35,23 @@ export function EnterStudioButton() {
           letterSpacing: "0.18em",
           textTransform: "uppercase",
           cursor: "pointer",
-          transition: "background 0.22s, transform 0.18s, box-shadow 0.22s",
-          boxShadow: "0 6px 40px rgba(117,8,81,0.32), inset 0 1px 0 rgba(255,255,255,0.09), inset 0 -1px 0 rgba(0,0,0,0.25)",
+          transition: "border-color 0.22s, background 0.22s, transform 0.18s",
+          boxShadow: "0 4px 24px rgba(117,8,81,0.12)",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "#941066";
-          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.035)";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 12px 56px rgba(117,8,81,0.48), inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.25)";
+          const btn = e.currentTarget as HTMLButtonElement;
+          btn.style.borderColor = "rgba(117,8,81,0.85)";
+          btn.style.background = "rgba(117,8,81,0.08)";
+          btn.style.transform = "scale(1.035)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "#750851";
-          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 40px rgba(117,8,81,0.32), inset 0 1px 0 rgba(255,255,255,0.09), inset 0 -1px 0 rgba(0,0,0,0.25)";
+          const btn = e.currentTarget as HTMLButtonElement;
+          btn.style.borderColor = "rgba(117,8,81,0.55)";
+          btn.style.background = "transparent";
+          btn.style.transform = "scale(1)";
         }}
       >
-        Enter Studio
+        Join
       </button>
 
       {open && (
@@ -72,7 +74,7 @@ export function EnterStudioButton() {
         >
           <div
             style={{
-              background: "#1c171d",
+              background: "#1c1c1c",
               border: "1px solid rgba(117,8,81,0.30)",
               borderRadius: 3,
               padding: "56px 48px 48px",
@@ -108,7 +110,7 @@ export function EnterStudioButton() {
               }}
             >
               This studio contains adult content intended for viewers 18 years of age or older.
-              By entering you confirm you are of legal age in your jurisdiction.
+              By joining you confirm you are of legal age in your jurisdiction.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button
@@ -129,7 +131,7 @@ export function EnterStudioButton() {
                   opacity: pending ? 0.6 : 1,
                 }}
               >
-                {pending ? "Entering…" : "I am 18 or older"}
+                {pending ? "Continuing…" : "I am 18 or older"}
               </button>
               <button
                 type="button"

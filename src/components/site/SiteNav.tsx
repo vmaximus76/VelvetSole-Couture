@@ -36,15 +36,17 @@ export function SiteNav({ session }: SiteNavProps) {
         >
           {session?.user ? (
             <>
-              <Link href="/store" style={navLinkStyle}>Browse</Link>
+              <Link href="/generate" style={navLinkStyle}>Create</Link>
               <span style={{ opacity: 0.35 }}>·</span>
-              <Link href="/dashboard" style={navLinkStyle}>Dashboard</Link>
+              <Link href="/library" style={navLinkStyle}>Library</Link>
+              <span style={{ opacity: 0.35 }}>·</span>
+              <Link href="/store" style={navLinkStyle}>Browse</Link>
             </>
           ) : (
             <>
               <Link href="/login" style={navLinkStyle}>Login</Link>
               <span style={{ opacity: 0.35 }}>·</span>
-              <Link href="/register" style={navLinkStyle}>Register</Link>
+              <Link href="/register" style={navLinkStyle}>Join</Link>
             </>
           )}
         </div>

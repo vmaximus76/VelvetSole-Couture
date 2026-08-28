@@ -7,7 +7,7 @@ import { getRedis } from "@/lib/redis";
 import refinePromptWithClaude from "@/lib/claude";
 
 const GENERATION_QUEUE_KEY = "generation-jobs:queue";
-const ALLOWED = new Set(["CREATOR", "ADMIN"]);
+const ALLOWED = new Set(["SUBSCRIBER", "CREATOR", "ADMIN"]);
 
 const createGenerationJobSchema = z.object({
   digitalModelId:    z.string().uuid().optional(),
