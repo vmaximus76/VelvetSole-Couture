@@ -13,13 +13,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   providers: [
-    Resend({
-      apiKey: process.env.RESEND_API_KEY,
-      from: process.env.EMAIL_FROM ?? "no-reply@velvetsolecouture.com",
-      sendVerificationRequest: async ({ identifier, url }) => {
-        await sendVerificationEmail(identifier, url);
-      },
-    }),
+    ...(process.env.RESEND_API_KEY
+      ? [
+          Resend({
+            apiKey: process.env.RESEND_API_KEY,
+            from: process.env.EMAIL_FROM ?? "no-reply@velvetsolecouture.com",
+            sendVerificationRequest: async ({ identifier, url }) => {
+              await sendVerificationEmail(identifier, url);
+            },
+          }),
+        ]
+      : []),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
