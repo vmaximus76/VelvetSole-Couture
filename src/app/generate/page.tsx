@@ -12,11 +12,16 @@ export default async function GeneratePage() {
   if (!session?.user) redirect("/login?callbackUrl=/generate");
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#ede9e4" }}>
+    <div style={{
+      background: "#0a0a0a",
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      color: "#ede9e4",
+    }}>
       <SiteNav session={session} />
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <div style={{ height: 1, background: "#750851", width: "100%", maxWidth: 1300 }} />
-      </div>
+      <div style={{ height: 1, background: "#750851", flexShrink: 0 }} />
       <GenerateForm />
     </div>
   );
