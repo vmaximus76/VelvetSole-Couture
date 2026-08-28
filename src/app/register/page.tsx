@@ -20,7 +20,7 @@ export default async function RegisterPage({
   searchParams: Promise<Record<string, string>>;
 }) {
   const session = await auth();
-  if (session?.user) redirect("/store");
+  if (session?.user) redirect("/generate");
 
   const params = await searchParams;
   const errorMsg = params.error ? (ERROR_MESSAGES[params.error] ?? "Something went wrong. Please try again.") : null;
@@ -29,9 +29,7 @@ export default async function RegisterPage({
     <main
       style={{
         minHeight: "100vh",
-        background: "#141214",
-        backgroundImage: "linear-gradient(138deg, #2b2430 0%, #1c181d 42%, #111012 100%)",
-        backgroundAttachment: "fixed",
+        background: "#0a0a0a",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -65,7 +63,7 @@ export default async function RegisterPage({
 
         <div
           style={{
-            background: "#1c171d",
+            background: "#141414",
             border: "1px solid rgba(117,8,81,0.20)",
             borderRadius: 3,
             padding: "36px 32px",

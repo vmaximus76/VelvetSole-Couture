@@ -14,7 +14,7 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string; registered?: string }>;
 }) {
   const session = await auth();
-  if (session?.user) redirect("/store");
+  if (session?.user) redirect("/generate");
 
   const params = await searchParams;
   const callbackUrl = params.callbackUrl ?? "/store";
@@ -24,9 +24,7 @@ export default async function LoginPage({
     <main
       style={{
         minHeight: "100vh",
-        background: "#141214",
-        backgroundImage: "linear-gradient(138deg, #2b2430 0%, #1c181d 42%, #111012 100%)",
-        backgroundAttachment: "fixed",
+        background: "#0a0a0a",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -78,7 +76,7 @@ export default async function LoginPage({
         )}
         <div
           style={{
-            background: "#1c171d",
+            background: "#141414",
             border: "1px solid rgba(117,8,81,0.20)",
             borderRadius: 3,
             padding: "36px 32px",

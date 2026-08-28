@@ -1,26 +1,74 @@
+import { auth } from "../../../auth";
 import { prisma } from "@/lib/prisma";
+import { SiteNav } from "@/components/site/SiteNav";
 import { ProductCard } from "@/components/store/product-card";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Browse — VelvetSole Couture",
+};
+
 export default async function StorePage() {
+  const session = await auth();
+
   const products = await prisma.product.findMany({
     where: { published: true },
     orderBy: { createdAt: "desc" },
   });
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-12 text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">VelvetSole Couture</p>
-          <h1 className="mt-2 text-3xl font-light tracking-wide text-neutral-100">The Collection</h1>
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#ede9e4" }}>
+      <SiteNav session={session} />
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ height: 1, background: "#750851", width: "100%", maxWidth: 1300 }} />
+      </div>
+
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 28px 96px" }}>
+        <div style={{ marginBottom: 48 }}>
+          <p style={{
+            fontFamily: "var(--font-jost), system-ui, sans-serif",
+            fontSize: "0.70rem",
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "#750851",
+            marginBottom: 12,
+          }}>
+            The Collection
+          </p>
+          <h1 style={{
+            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontSize: "clamp(1.8rem, 4vw, 2.6rem)",
+            fontWeight: 300,
+            letterSpacing: "0.02em",
+            color: "#ede9e4",
+          }}>
+            Browse
+          </h1>
         </div>
 
         {products.length === 0 ? (
-          <p className="text-center text-sm text-neutral-500">No items are published yet.</p>
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <p style={{
+              fontFamily: "var(--font-cormorant), Georgia, serif",
+              fontSize: "1.3rem",
+              fontWeight: 300,
+              color: "rgba(237,233,228,0.30)",
+              marginBottom: 8,
+            }}>
+              The collection is being curated
+            </p>
+            <p style={{
+              fontFamily: "var(--font-jost), system-ui, sans-serif",
+              fontSize: "0.80rem",
+              color: "rgba(237,233,228,0.18)",
+              letterSpacing: "0.06em",
+            }}>
+              Check back soon, or create your own
+            </p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
             {products.map((product) => (
               <ProductCard
                 key={product.id}
@@ -33,7 +81,7 @@ export default async function StorePage() {
             ))}
           </div>
         )}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
