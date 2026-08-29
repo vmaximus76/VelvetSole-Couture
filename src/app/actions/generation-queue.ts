@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { auth } from "../../../auth";
 import { prisma } from "@/lib/prisma";
+import { submitToFal } from "@/lib/fal";
 import refinePromptWithClaude from "@/lib/claude";
 
 const ALLOWED = new Set(["SUBSCRIBER", "CREATOR", "ADMIN"]);
@@ -64,31 +65,19 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
     },
   });
 
-  const endpointId = process.env.RUNPOD_ENDPOINT_ID;
-  const apiKey = process.env.RUNPOD_API_KEY;
-  if (!endpointId || !apiKey) throw new Error("RunPod is not configured");
-
-  const runpodRes = await fetch(`https://api.runpod.ai/v2/${endpointId}/run`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      input: {
-        jobId:               job.id,
-        digitalModelId:      job.digitalModelId,
-        digitalModelLoraKey,
-        prompt:              job.prompt,
-        poseReferenceS3Key:  job.poseReferenceS3Key,
-        parameters:          job.parameters,
-      },
-    }),
-  });
-
-  if (!runpodRes.ok) {
+  try {
+    const { falRequestId, falModelId } = await submitToFal(
+      job.prompt,
+      job.outputType,
+      job.parameters as Record<string, unknown>,
+    );
+    await prisma.generationJob.update({
+      where: { id: job.id },
+      data: { falRequestId, falModelId },
+    });
+  } catch (err) {
     await prisma.generationJob.update({ where: { id: job.id }, data: { status: "FAILED" } });
-    throw new Error(`RunPod submission failed (${runpodRes.status})`);
+    throw err;
   }
 
   return { jobId: job.id };

@@ -184,7 +184,9 @@ model GenerationJob {
   status              String   @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
   parameters          Json
   resultS3Url         String?
-  promotedBaseVideoId String?  // Set after "Promote to Base Library" action runs
+  falRequestId        String?
+  falModelId          String?
+  promotedBaseVideoId String?
   createdAt           DateTime @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
