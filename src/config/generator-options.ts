@@ -1,3 +1,46 @@
+export const STYLE_OPTIONS = [
+  { label: "Classic", value: "classic" },
+  { label: "Elegant", value: "elegant" },
+  { label: "Glamour", value: "glamour" },
+  { label: "Boudoir", value: "boudoir" },
+  { label: "Editorial", value: "editorial" },
+];
+
+export const SKIN_TONE_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "Fair", value: "fair porcelain skin" },
+  { label: "Light", value: "light skin tone" },
+  { label: "Medium", value: "medium skin tone" },
+  { label: "Olive", value: "olive skin tone" },
+  { label: "Tan", value: "tan skin" },
+  { label: "Brown", value: "brown skin tone" },
+  { label: "Dark", value: "dark skin tone" },
+];
+
+export const HAIR_COLOR_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "Black", value: "black hair" },
+  { label: "Dark Brown", value: "dark brown hair" },
+  { label: "Brown", value: "brown hair" },
+  { label: "Chestnut", value: "chestnut hair" },
+  { label: "Blonde", value: "blonde hair" },
+  { label: "Light Blonde", value: "light blonde hair" },
+  { label: "Platinum", value: "platinum blonde hair" },
+  { label: "Auburn", value: "auburn hair" },
+  { label: "Red", value: "red hair" },
+  { label: "Silver", value: "silver hair" },
+];
+
+export const HAIR_TYPE_OPTIONS = [
+  { label: "Auto", value: "auto" },
+  { label: "Straight", value: "straight hair" },
+  { label: "Wavy", value: "wavy hair" },
+  { label: "Curly", value: "curly hair" },
+  { label: "Coily", value: "coily natural hair" },
+  { label: "Updo", value: "elegant updo hairstyle" },
+  { label: "Ponytail", value: "sleek ponytail" },
+];
+
 export const ETHNICITY_OPTIONS = [
   { label: "Auto", value: "auto" },
   { label: "Asian", value: "asian" },

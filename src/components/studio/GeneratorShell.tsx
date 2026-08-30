@@ -17,12 +17,15 @@ import {
   NAIL_STYLE_OPTIONS,
   NAIL_LENGTH_OPTIONS,
   FOOTWEAR_OPTIONS,
-  HEEL_HEIGHT_OPTIONS,
   HOSIERY_OPTIONS,
   ASPECT_RATIO_OPTIONS,
   PROMPT_POWER_OPTIONS,
   DURATION_OPTIONS,
   MOTION_OPTIONS,
+  STYLE_OPTIONS,
+  SKIN_TONE_OPTIONS,
+  HAIR_COLOR_OPTIONS,
+  HAIR_TYPE_OPTIONS,
 } from "@/config/generator-options";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -50,17 +53,17 @@ interface Props {
 // ── Design tokens ────────────────────────────────────────────────
 
 const T = {
-  bg: "#141214",
-  panel: "#191519",
-  border: "rgba(161,163,166,0.09)",
+  bg: "#0a0a0a",
+  panel: "#0e0d0e",
+  border: "rgba(255,255,255,0.12)",
   accent: "#750851",
-  accentFaint: "rgba(117,8,81,0.18)",
+  accentFaint: "rgba(117,8,81,0.22)",
   text: "#ede9e4",
-  muted: "rgba(237,233,228,0.40)",
-  dim: "rgba(237,233,228,0.18)",
-  input: "#1f1b20",
-  cormorant: "var(--font-cormorant), Georgia, serif",
-  jost: "var(--font-jost), system-ui, sans-serif",
+  muted: "rgba(237,233,228,0.60)",
+  dim: "rgba(237,233,228,0.40)",
+  input: "#1a171a",
+  cormorant: "var(--font-montserrat), system-ui, sans-serif",
+  jost: "var(--font-inter), system-ui, sans-serif",
 };
 
 // ── Micro-components ─────────────────────────────────────────────
@@ -69,12 +72,13 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        fontSize: "0.63rem",
-        letterSpacing: "0.12em",
+        fontSize: "0.72rem",
+        letterSpacing: "0.10em",
         textTransform: "uppercase",
         color: T.dim,
         fontFamily: T.jost,
-        marginBottom: 4,
+        fontWeight: 500,
+        marginBottom: 5,
       }}
     >
       {children}
@@ -89,16 +93,17 @@ function SectionRule({ label }: { label: string }) {
         display: "flex",
         alignItems: "center",
         gap: 10,
-        margin: "16px 0 12px",
+        margin: "18px 0 13px",
       }}
     >
       <span
         style={{
-          fontSize: "0.60rem",
-          letterSpacing: "0.20em",
+          fontSize: "0.68rem",
+          letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: T.dim,
-          fontFamily: T.jost,
+          color: T.muted,
+          fontFamily: T.cormorant,
+          fontWeight: 600,
           whiteSpace: "nowrap",
         }}
       >
@@ -131,9 +136,9 @@ function VSelect({
         border: `1px solid ${T.border}`,
         borderRadius: 2,
         color: disabled ? T.dim : T.text,
-        fontSize: "0.76rem",
+        fontSize: "0.84rem",
         fontFamily: T.jost,
-        padding: "7px 10px",
+        padding: "8px 10px",
         appearance: "none",
         cursor: disabled ? "not-allowed" : "pointer",
         outline: "none",
@@ -164,14 +169,14 @@ function VToggle({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 7,
+        gap: 8,
         background: "none",
         border: "none",
         cursor: "pointer",
         padding: 0,
         color: checked ? T.text : T.muted,
         fontFamily: T.jost,
-        fontSize: "0.76rem",
+        fontSize: "0.84rem",
         transition: "color 0.2s",
       }}
     >
@@ -238,6 +243,7 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
   const [stageType, setStageType] = useState<"IMAGE" | "VIDEO">("IMAGE");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const set = useCallback(
@@ -246,6 +252,21 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
     },
     [],
   );
+
+  // Load saved settings on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("vsc-generator-settings");
+      if (saved) setS((prev) => ({ ...prev, ...JSON.parse(saved) }));
+    } catch {}
+  }, []);
+
+  // Persist settings whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("vsc-generator-settings", JSON.stringify(s));
+    } catch {}
+  }, [s]);
 
   // Poll active job every 5s
   useEffect(() => {
@@ -290,13 +311,15 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
     try {
       const prompt = buildPrompt(s);
       const parameters = buildParameters(s);
-      const { jobId } = await createGenerationJob({
+      const result = await createGenerationJob({
         digitalModelId: s.digitalModelId ?? undefined,
         prompt,
         poseReferenceS3Key: s.poseReferenceKey ?? undefined,
         outputType: s.outputType,
         parameters,
       });
+      if ("error" in result) throw new Error(result.error);
+      const { jobId } = result;
       setActiveJobId(jobId);
       setJobStatus("PENDING");
       setStageType(s.outputType);
@@ -334,8 +357,9 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        height: "100%",
         overflow: "hidden",
+        position: "relative",
         background: T.bg,
         color: T.text,
         fontFamily: T.jost,
@@ -359,58 +383,171 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
           style={{
             padding: "18px 18px 14px",
             borderBottom: `1px solid ${T.border}`,
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
           }}
         >
-          <div
-            style={{
-              fontFamily: T.cormorant,
-              fontSize: "1.0rem",
-              fontWeight: 300,
-              letterSpacing: "0.06em",
-            }}
-          >
-            Studio
+          <div>
+            <div
+              style={{
+                fontFamily: T.cormorant,
+                fontSize: "1.05rem",
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+              }}
+            >
+              Studio
+            </div>
+            <div
+              style={{
+                fontSize: "0.70rem",
+                color: T.dim,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                marginTop: 3,
+              }}
+            >
+              Generator
+            </div>
           </div>
-          <div
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((p) => !p)}
             style={{
-              fontSize: "0.64rem",
-              color: T.dim,
+              background: historyOpen ? T.accentFaint : "transparent",
+              border: `1px solid ${historyOpen ? T.accent : T.border}`,
+              borderRadius: 2,
+              color: historyOpen ? T.text : T.muted,
+              fontSize: "0.68rem",
               letterSpacing: "0.14em",
               textTransform: "uppercase",
-              marginTop: 2,
+              padding: "6px 11px",
+              cursor: "pointer",
+              fontFamily: T.jost,
+              transition: "all 0.2s",
+              marginTop: 4,
             }}
           >
-            Generator
-          </div>
+            History
+          </button>
         </div>
 
         {/* Scrollable body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 18px 16px" }}>
 
-          {/* Output type */}
-          <SectionRule label="Output" />
-          <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
-            {(["IMAGE", "VIDEO"] as const).map((t) => (
+          {/* ── Top selector rows ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 7, padding: "14px 0 4px" }}>
+
+            {/* Realistic / Artistic */}
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["REALISTIC", "ARTISTIC"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set("modelType", t)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    borderRadius: 2,
+                    border: `1px solid ${s.modelType === t ? T.accent : T.border}`,
+                    background: s.modelType === t ? T.accent : "rgba(255,255,255,0.04)",
+                    color: s.modelType === t ? "#fff" : T.muted,
+                    fontSize: "0.82rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    fontFamily: T.cormorant,
+                    fontWeight: 600,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {t === "REALISTIC" ? "Realistic" : "Artistic"}
+                </button>
+              ))}
+            </div>
+
+            {/* Female / Male */}
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["FEMALE", "MALE"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => set("gender", g)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    borderRadius: 2,
+                    border: `1px solid ${s.gender === g ? T.accent : T.border}`,
+                    background: s.gender === g ? T.accent : "rgba(255,255,255,0.04)",
+                    color: s.gender === g ? "#fff" : T.muted,
+                    fontSize: "0.82rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    fontFamily: T.cormorant,
+                    fontWeight: 600,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {g === "FEMALE" ? "Female" : "Male"}
+                </button>
+              ))}
+            </div>
+
+            {/* Image / Video */}
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["IMAGE", "VIDEO"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set("outputType", t)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    borderRadius: 2,
+                    border: `1px solid ${s.outputType === t ? T.accent : T.border}`,
+                    background: s.outputType === t ? T.accentFaint : "rgba(255,255,255,0.04)",
+                    color: s.outputType === t ? T.text : T.muted,
+                    fontSize: "0.82rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    fontFamily: T.cormorant,
+                    fontWeight: 600,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Style */}
+          <SectionRule label="Style" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 4 }}>
+            {STYLE_OPTIONS.map(({ label, value }) => (
               <button
-                key={t}
+                key={value}
                 type="button"
-                onClick={() => set("outputType", t)}
+                onClick={() => set("style", value)}
                 style={{
-                  flex: 1,
-                  padding: "7px 0",
+                  padding: "11px 0",
                   borderRadius: 2,
-                  border: `1px solid ${s.outputType === t ? T.accent : T.border}`,
-                  background: s.outputType === t ? T.accentFaint : "transparent",
-                  color: s.outputType === t ? T.text : T.muted,
-                  fontSize: "0.72rem",
-                  letterSpacing: "0.16em",
+                  border: `1px solid ${s.style === value ? T.accent : T.border}`,
+                  background: s.style === value ? T.accent : "rgba(255,255,255,0.03)",
+                  color: s.style === value ? "#fff" : T.muted,
+                  fontSize: "0.82rem",
+                  letterSpacing: "0.10em",
                   textTransform: "uppercase",
                   cursor: "pointer",
-                  fontFamily: T.jost,
+                  fontFamily: T.cormorant,
+                  fontWeight: 600,
                   transition: "all 0.2s",
                 }}
               >
-                {t}
+                {label}
               </button>
             ))}
           </div>
@@ -431,28 +568,46 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
           )}
 
           {/* Appearance */}
-          <SectionRule label="Appearance" />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-            <div>
-              <FieldLabel>Ethnicity</FieldLabel>
-              <VSelect value={s.ethnicity} onChange={(v) => set("ethnicity", v)} options={ETHNICITY_OPTIONS} />
+          <SectionRule label="Appearance Settings" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <FieldLabel>Ethnicity</FieldLabel>
+                <VSelect value={s.ethnicity} onChange={(v) => set("ethnicity", v)} options={ETHNICITY_OPTIONS} />
+              </div>
+              <div>
+                <FieldLabel>Skin Tone</FieldLabel>
+                <VSelect value={s.skinTone} onChange={(v) => set("skinTone", v)} options={SKIN_TONE_OPTIONS} />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <FieldLabel>Hair Color</FieldLabel>
+                <VSelect value={s.hairColor} onChange={(v) => set("hairColor", v)} options={HAIR_COLOR_OPTIONS} />
+              </div>
+              <div>
+                <FieldLabel>Hair Type</FieldLabel>
+                <VSelect value={s.hairType} onChange={(v) => set("hairType", v)} options={HAIR_TYPE_OPTIONS} />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <FieldLabel>Age Range</FieldLabel>
+                <VSelect value={s.ageRange} onChange={(v) => set("ageRange", v)} options={AGE_OPTIONS} />
+              </div>
+              <div>
+                <FieldLabel>Attire</FieldLabel>
+                <VSelect value={s.outfit} onChange={(v) => set("outfit", v)} options={OUTFIT_OPTIONS} />
+              </div>
             </div>
             <div>
-              <FieldLabel>Age Range</FieldLabel>
-              <VSelect value={s.ageRange} onChange={(v) => set("ageRange", v)} options={AGE_OPTIONS} />
-            </div>
-            <div>
-              <FieldLabel>Outfit</FieldLabel>
-              <VSelect value={s.outfit} onChange={(v) => set("outfit", v)} options={OUTFIT_OPTIONS} />
-            </div>
-            <div>
-              <FieldLabel>Location</FieldLabel>
+              <FieldLabel>Location / Setting</FieldLabel>
               <VSelect value={s.location} onChange={(v) => set("location", v)} options={LOCATION_OPTIONS} />
             </div>
           </div>
 
           {/* Foot & Leg */}
-          <SectionRule label="Foot & Leg" />
+          <SectionRule label="Foot & Leg Detail" />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div>
@@ -460,18 +615,9 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
                 <VSelect value={s.footwear} onChange={(v) => set("footwear", v)} options={FOOTWEAR_OPTIONS} />
               </div>
               <div>
-                <FieldLabel>Heel Height</FieldLabel>
-                <VSelect
-                  value={s.heelHeight}
-                  onChange={(v) => set("heelHeight", v)}
-                  options={HEEL_HEIGHT_OPTIONS}
-                  disabled={s.footwear === "bare"}
-                />
+                <FieldLabel>Hosiery</FieldLabel>
+                <VSelect value={s.hosiery} onChange={(v) => set("hosiery", v)} options={HOSIERY_OPTIONS} />
               </div>
-            </div>
-            <div>
-              <FieldLabel>Hosiery</FieldLabel>
-              <VSelect value={s.hosiery} onChange={(v) => set("hosiery", v)} options={HOSIERY_OPTIONS} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div>
@@ -479,7 +625,7 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
                 <VSelect value={s.nailColor} onChange={(v) => set("nailColor", v)} options={NAIL_COLOR_OPTIONS} />
               </div>
               <div>
-                <FieldLabel>Nail Style</FieldLabel>
+                <FieldLabel>Nail Shape</FieldLabel>
                 <VSelect value={s.nailStyle} onChange={(v) => set("nailStyle", v)} options={NAIL_STYLE_OPTIONS} />
               </div>
             </div>
@@ -660,15 +806,16 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
             disabled={generating}
             style={{
               width: "100%",
-              padding: "12px 0",
+              padding: "14px 0",
               background: generating ? "rgba(117,8,81,0.22)" : T.accent,
               border: "none",
               borderRadius: 2,
-              color: generating ? "rgba(237,233,228,0.38)" : T.text,
-              fontSize: "0.72rem",
+              color: generating ? "rgba(237,233,228,0.38)" : "#fff",
+              fontSize: "0.84rem",
               letterSpacing: "0.22em",
               textTransform: "uppercase",
-              fontFamily: T.jost,
+              fontFamily: T.cormorant,
+              fontWeight: 600,
               cursor: generating ? "not-allowed" : "pointer",
               transition: "background 0.25s, color 0.25s",
             }}
@@ -728,10 +875,10 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
                 <div
                   style={{
                     fontFamily: T.cormorant,
-                    fontSize: "1.05rem",
-                    fontWeight: 300,
-                    letterSpacing: "0.08em",
-                    color: "rgba(237,233,228,0.42)",
+                    fontSize: "1.10rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    color: "rgba(237,233,228,0.55)",
                   }}
                 >
                   {busyLabel}
@@ -749,10 +896,10 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
                 <div
                   style={{
                     fontFamily: T.cormorant,
-                    fontSize: "1.55rem",
-                    fontWeight: 300,
-                    letterSpacing: "0.06em",
-                    color: "rgba(237,233,228,0.16)",
+                    fontSize: "1.60rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    color: "rgba(237,233,228,0.22)",
                     textAlign: "center",
                     lineHeight: 1.5,
                   }}
@@ -773,124 +920,145 @@ export function GeneratorShell({ models, recentJobs: initialJobs }: Props) {
         <style>{`@keyframes vspin { to { transform: rotate(360deg); } }`}</style>
       </div>
 
-      {/* ── Right history panel ── */}
-      <div
-        style={{
-          width: 252,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          background: T.panel,
-          borderLeft: `1px solid ${T.border}`,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "18px 14px 12px",
-            borderBottom: `1px solid ${T.border}`,
-            fontSize: "0.60rem",
-            letterSpacing: "0.20em",
-            textTransform: "uppercase",
-            color: T.dim,
-            fontFamily: T.jost,
-          }}
-        >
-          History
-        </div>
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {jobs.length === 0 ? (
+      {/* ── History slide-in overlay ── */}
+      {historyOpen && (
+        <>
+          {/* Dim the canvas slightly when history is open */}
+          <div
+            onClick={() => setHistoryOpen(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 10,
+              background: "rgba(0,0,0,0)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 260,
+              zIndex: 11,
+              display: "flex",
+              flexDirection: "column",
+              background: T.panel,
+              borderLeft: `1px solid ${T.border}`,
+              boxShadow: "-12px 0 40px rgba(0,0,0,0.45)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Panel header */}
             <div
               style={{
-                padding: "20px 14px",
-                fontSize: "0.72rem",
-                color: T.dim,
-                fontFamily: T.jost,
-                lineHeight: 1.6,
+                padding: "14px 14px 12px",
+                borderBottom: `1px solid ${T.border}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              No generations yet.
-            </div>
-          ) : (
-            jobs.map((job) => (
-              <button
-                key={job.id}
-                type="button"
-                onClick={() => loadJob(job)}
-                disabled={!job.resultS3Url}
+              <span
                 style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "11px 14px",
-                  background: "none",
-                  border: "none",
-                  borderBottom: `1px solid ${T.border}`,
-                  cursor: job.resultS3Url ? "pointer" : "default",
-                  textAlign: "left",
+                  fontSize: "0.60rem",
+                  letterSpacing: "0.20em",
+                  textTransform: "uppercase",
+                  color: T.dim,
+                  fontFamily: T.jost,
                 }}
               >
+                History
+              </span>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: T.dim,
+                  fontSize: "1.1rem",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  padding: "0 2px",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Job list */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {jobs.length === 0 ? (
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    marginBottom: 5,
-                  }}
-                >
-                  <StatusDot status={job.status} />
-                  <span
-                    style={{
-                      fontSize: "0.60rem",
-                      color: T.dim,
-                      fontFamily: T.jost,
-                      letterSpacing: "0.10em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {job.status.toLowerCase()}
-                  </span>
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: "0.58rem",
-                      color: T.dim,
-                      fontFamily: T.jost,
-                    }}
-                  >
-                    {job.outputType}
-                  </span>
-                </div>
-                <div
-                  style={{
+                    padding: "20px 14px",
                     fontSize: "0.72rem",
-                    color: T.muted,
-                    fontFamily: T.jost,
-                    lineHeight: 1.45,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {job.prompt}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.60rem",
                     color: T.dim,
                     fontFamily: T.jost,
-                    marginTop: 4,
+                    lineHeight: 1.6,
                   }}
                 >
-                  {new Date(job.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  No generations yet.
                 </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+              ) : (
+                jobs.map((job) => (
+                  <button
+                    key={job.id}
+                    type="button"
+                    onClick={() => { loadJob(job); setHistoryOpen(false); }}
+                    disabled={!job.resultS3Url}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "11px 14px",
+                      background: "none",
+                      border: "none",
+                      borderBottom: `1px solid ${T.border}`,
+                      cursor: job.resultS3Url ? "pointer" : "default",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+                      <StatusDot status={job.status} />
+                      <span
+                        style={{
+                          fontSize: "0.60rem",
+                          color: T.dim,
+                          fontFamily: T.jost,
+                          letterSpacing: "0.10em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {job.status.toLowerCase()}
+                      </span>
+                      <span style={{ marginLeft: "auto", fontSize: "0.58rem", color: T.dim, fontFamily: T.jost }}>
+                        {job.outputType}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.72rem",
+                        color: T.muted,
+                        fontFamily: T.jost,
+                        lineHeight: 1.45,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {job.prompt}
+                    </div>
+                    <div style={{ fontSize: "0.60rem", color: T.dim, fontFamily: T.jost, marginTop: 4 }}>
+                      {new Date(job.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

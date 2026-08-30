@@ -19,7 +19,7 @@ export async function GET(
     select: {
       id: true, status: true, resultS3Url: true,
       outputType: true, prompt: true, createdAt: true,
-      falRequestId: true, falModelId: true,
+      falRequestId: true, falModelId: true, falStatusUrl: true,
     },
   });
 
@@ -30,7 +30,8 @@ export async function GET(
   // If job is still in-flight, check FAL.ai for the latest status
   if ((job.status === "PENDING" || job.status === "PROCESSING") && job.falRequestId && job.falModelId) {
     try {
-      const fal = await checkFalJob(job.falModelId, job.falRequestId);
+      const fal = await checkFalJob(job.falModelId, job.falRequestId, job.falStatusUrl);
+      console.log(`[job ${job.id}] FAL status: ${fal.status}`, fal.resultUrl ?? "");
 
       const statusMap: Record<string, string> = {
         IN_QUEUE: "PENDING", IN_PROGRESS: "PROCESSING",
@@ -52,8 +53,8 @@ export async function GET(
           resultS3Url: fal.resultUrl ?? job.resultS3Url,
         });
       }
-    } catch {
-      // non-fatal — return cached DB status
+    } catch (err) {
+      console.error(`[job ${job.id}] FAL check failed:`, err instanceof Error ? err.message : err);
     }
   }
 

@@ -1,8 +1,14 @@
 export interface GeneratorSettings {
   outputType: "IMAGE" | "VIDEO";
+  modelType: "REALISTIC" | "ARTISTIC";
+  gender: "FEMALE" | "MALE";
+  style: string;
   digitalModelId: string | null;
   // Appearance
   ethnicity: string;
+  skinTone: string;
+  hairColor: string;
+  hairType: string;
   ageRange: string;
   outfit: string;
   location: string;
@@ -11,7 +17,6 @@ export interface GeneratorSettings {
   nailStyle: string;
   nailLength: string;
   footwear: string;
-  heelHeight: string;
   hosiery: string;
   toeRings: boolean;
   anklet: boolean;
@@ -34,8 +39,14 @@ export interface GeneratorSettings {
 
 export const DEFAULT_SETTINGS: GeneratorSettings = {
   outputType: "IMAGE",
+  modelType: "REALISTIC",
+  gender: "FEMALE",
+  style: "classic",
   digitalModelId: null,
   ethnicity: "auto",
+  skinTone: "auto",
+  hairColor: "auto",
+  hairType: "auto",
   ageRange: "auto",
   outfit: "auto",
   location: "auto",
@@ -43,7 +54,6 @@ export const DEFAULT_SETTINGS: GeneratorSettings = {
   nailStyle: "glossy",
   nailLength: "medium length",
   footwear: "bare",
-  heelHeight: "auto",
   hosiery: "bare",
   toeRings: false,
   anklet: false,
@@ -60,14 +70,25 @@ export const DEFAULT_SETTINGS: GeneratorSettings = {
   motionIntensity: "natural",
 };
 
+const STYLE_PROMPT: Record<string, string> = {
+  classic: "classic elegant style",
+  elegant: "elegant haute couture",
+  glamour: "glamour photography",
+  boudoir: "intimate boudoir photography",
+  editorial: "high-fashion editorial photography",
+};
+
 export function buildPrompt(s: GeneratorSettings): string {
   const parts: string[] = [];
 
   // Who
   const who: string[] = [];
   if (s.ethnicity !== "auto") who.push(s.ethnicity);
+  if (s.skinTone !== "auto") who.push(s.skinTone);
   if (s.ageRange !== "auto") who.push(s.ageRange);
-  who.push("woman");
+  who.push(s.gender === "MALE" ? "man" : "woman");
+  if (s.hairColor !== "auto") who.push("with " + s.hairColor);
+  if (s.hairType !== "auto") who.push(s.hairType);
   parts.push(who.join(" "));
 
   // Outfit
@@ -79,12 +100,8 @@ export function buildPrompt(s: GeneratorSettings): string {
   // Hosiery
   if (s.hosiery !== "bare") parts.push(s.hosiery);
 
-  // Footwear + heel height
-  if (s.footwear !== "bare") {
-    const fw = s.footwear;
-    const hh = s.heelHeight !== "auto" ? ", " + s.heelHeight : "";
-    parts.push("wearing " + fw + hh);
-  }
+  // Footwear
+  if (s.footwear !== "bare") parts.push("wearing " + s.footwear);
 
   // Nails
   if (s.nailColor !== "auto") {
@@ -100,8 +117,12 @@ export function buildPrompt(s: GeneratorSettings): string {
   // Pose modifiers
   if (s.scrunch) parts.push("scrunching toes, flexed foot arch");
 
-  // Quality baseline
-  parts.push("professional photography, sharp focus, studio lighting, high detail, 4k");
+  // Style + model type
+  if (STYLE_PROMPT[s.style]) parts.push(STYLE_PROMPT[s.style]);
+  const qualityBase = s.modelType === "ARTISTIC"
+    ? "artistic stylized photography, high detail"
+    : "photorealistic, professional photography, sharp focus, studio lighting, high detail, 4k";
+  parts.push(qualityBase);
 
   // User's custom prompt last
   if (s.customPrompt.trim()) parts.push(s.customPrompt.trim());

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../auth";
 import { prisma } from "@/lib/prisma";
-import { GeneratorShell } from "@/components/studio/GeneratorShell";
+import { SiteNav } from "@/components/site/SiteNav";
+import { StudioHub } from "@/components/studio/StudioHub";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Studio — VelvetSole Couture" };
@@ -32,12 +33,16 @@ export default async function StudioPage() {
   ]);
 
   return (
-    <GeneratorShell
-      models={models}
-      recentJobs={recentJobs.map((j) => ({
-        ...j,
-        createdAt: j.createdAt.toISOString(),
-      }))}
-    />
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#ede9e4" }}>
+      <SiteNav session={session} />
+      <StudioHub
+        models={models}
+        recentJobs={recentJobs.map((j) => ({
+          ...j,
+          createdAt: j.createdAt.toISOString(),
+        }))}
+        userName={session.user.name ?? null}
+      />
+    </div>
   );
 }

@@ -12,7 +12,7 @@ export function EnterStudioButton() {
   async function handleConfirm() {
     setPending(true);
     await confirmAge();
-    router.push("/generate");
+    router.push("/studio");
   }
 
   return (

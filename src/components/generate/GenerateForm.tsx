@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { createGenerationJob } from "@/app/actions/generation-queue";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -265,6 +264,9 @@ export function GenerateForm() {
   const [error,      setError]      = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Theater overlay
+  const [theaterOpen, setTheaterOpen] = useState(false);
+
   const heelTypes = ["stiletto", "platform", "kitten", "mules", "heels"];
   const showHeelHeight = heelTypes.some((h) => footwear === h);
 
@@ -309,12 +311,17 @@ export function GenerateForm() {
         accessories, negativePrompt, promptPower, aspectRatio, poseStrength,
       };
 
-      const { jobId } = await createGenerationJob({
+      const result = await createGenerationJob({
         prompt: prompt.trim() || "(auto)",
         outputType,
         parameters,
       });
-      setJob({ id: jobId, status: "PENDING", resultUrl: null, outputType });
+      if ("error" in result) {
+        setError(result.error);
+        setSubmitting(false);
+        return;
+      }
+      setJob({ id: result.jobId, status: "PENDING", resultUrl: null, outputType });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setSubmitting(false);
@@ -655,13 +662,13 @@ export function GenerateForm() {
               overflow: "hidden",
             }}>
               {job.status === "COMPLETED" && job.resultUrl ? (
-                job.outputType === "IMAGE" ? (
+                /\.(mp4|webm|mov)(\?|$)/i.test(job.resultUrl) ? (
+                  <video src={job.resultUrl} autoPlay loop playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={job.resultUrl} alt="Generated" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <video src={job.resultUrl} autoPlay loop playsInline muted style={{ width: "100%", height: "100%" }} />
                 )
-              ) : job.status === "FAILED" ? (
+              ) : (job.status === "COMPLETED" && !job.resultUrl) || job.status === "FAILED" ? (
                 <p style={{ fontFamily: "var(--font-jost), system-ui, sans-serif", fontSize: "0.74rem", color: "#c0384a", letterSpacing: "0.10em" }}>
                   Generation failed — try again
                 </p>
@@ -678,22 +685,24 @@ export function GenerateForm() {
             {/* Actions after generation */}
             {job.status === "COMPLETED" && (
               <div style={{ display: "flex", gap: 10 }}>
-                <Link
-                  href={`/viewer/${job.id}`}
+                <button
+                  type="button"
+                  onClick={() => setTheaterOpen(true)}
                   style={{
                     padding: "9px 22px",
                     background: "#750851",
                     color: "#ede9e4",
-                    textDecoration: "none",
+                    border: "none",
                     fontFamily: "var(--font-jost), system-ui, sans-serif",
                     fontSize: "0.72rem",
                     letterSpacing: "0.14em",
                     textTransform: "uppercase",
                     borderRadius: 2,
+                    cursor: "pointer",
                   }}
                 >
                   View in Theater
-                </Link>
+                </button>
                 <button
                   type="button"
                   onClick={handleGenerate}
@@ -717,6 +726,72 @@ export function GenerateForm() {
           </>
         )}
       </div>
+
+      {/* ── Theater overlay ──────────────────────────────────────────── */}
+      {theaterOpen && job?.resultUrl && (
+        <div
+          onClick={() => setTheaterOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.80)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setTheaterOpen(false)}
+            style={{
+              position: "absolute",
+              top: 20,
+              right: 24,
+              background: "none",
+              border: "none",
+              color: "rgba(237,233,228,0.50)",
+              fontSize: "1.4rem",
+              cursor: "pointer",
+              lineHeight: 1,
+            }}
+            aria-label="Close theater"
+          >
+            ✕
+          </button>
+
+          {/* Media — stop click from bubbling to the backdrop */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {/\.(mp4|webm|mov)(\?|$)/i.test(job.resultUrl) ? (
+              <video
+                src={job.resultUrl}
+                autoPlay
+                loop
+                playsInline
+                controls
+                style={{ maxWidth: "90vw", maxHeight: "90vh", display: "block" }}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={job.resultUrl}
+                alt="Generated"
+                style={{ maxWidth: "90vw", maxHeight: "90vh", display: "block" }}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

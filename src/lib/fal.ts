@@ -1,11 +1,15 @@
-const FAL_BASE = "https://queue.fal.run";
-const IMAGE_MODEL = "fal-ai/flux/dev";
-const VIDEO_MODEL = "fal-ai/wan/v2.1/text-to-video";
+import { createFalClient } from "@fal-ai/client";
 
-function falHeaders(): HeadersInit {
+const IMAGE_MODEL = "fal-ai/flux/dev";
+// HunyuanVideo has a two-segment model ID (fal-ai/hunyuan-video) so queue result URLs
+// resolve correctly. WAN v2.1 (fal-ai/wan/v2.1/text-to-video) dispatches via webhook
+// and its result URL 404s when polled — not compatible with our polling flow.
+const VIDEO_MODEL = "fal-ai/hunyuan-video";
+
+function getFalClient() {
   const key = process.env.FAL_KEY;
   if (!key) throw new Error("FAL_KEY is not configured");
-  return { "Authorization": `Key ${key}`, "Content-Type": "application/json" };
+  return createFalClient({ credentials: key });
 }
 
 function buildFalPrompt(prompt: string, params: Record<string, unknown>): string {
@@ -129,19 +133,21 @@ export async function submitToFal(
   prompt: string,
   outputType: string,
   params: Record<string, unknown>,
-): Promise<{ falRequestId: string; falModelId: string }> {
+): Promise<{ falRequestId: string; falModelId: string; falStatusUrl?: string }> {
+  const client = getFalClient();
   const fullPrompt = buildFalPrompt(prompt, params);
   const modelId = outputType === "VIDEO" ? VIDEO_MODEL : IMAGE_MODEL;
 
-  const aspectMap: Record<string, string> = {
-    portrait: "3:4", tall: "9:16", square: "1:1", landscape: "16:9",
+  // HunyuanVideo uses a "widthxheight" video_size string, not aspect_ratio.
+  const hunyuanSizeMap: Record<string, string> = {
+    portrait: "720x1280", tall: "720x1280", square: "720x720", landscape: "1280x720",
   };
 
   const input: Record<string, unknown> = outputType === "VIDEO"
     ? {
         prompt: fullPrompt,
-        aspect_ratio: aspectMap[(params.aspectRatio as string) ?? "tall"] ?? "9:16",
-        num_frames: 81,
+        video_size: hunyuanSizeMap[(params.aspectRatio as string) ?? "tall"] ?? "720x1280",
+        num_inference_steps: 30,
       }
     : {
         prompt: fullPrompt,
@@ -152,15 +158,13 @@ export async function submitToFal(
         enable_safety_checker: false,
       };
 
-  const res = await fetch(`${FAL_BASE}/${modelId}`, {
-    method: "POST",
-    headers: falHeaders(),
-    body: JSON.stringify({ input }),
-  });
-
-  if (!res.ok) throw new Error(`FAL.ai submit failed: ${res.status} ${await res.text()}`);
-  const data = await res.json() as { request_id: string };
-  return { falRequestId: data.request_id, falModelId: modelId };
+  const result = await client.queue.submit(modelId, { input });
+  console.log("[fal] submit response:", JSON.stringify(result));
+  return {
+    falRequestId: result.request_id,
+    falModelId: modelId,
+    falStatusUrl: result.status_url,
+  };
 }
 
 export type FalStatus = "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
@@ -168,29 +172,81 @@ export type FalStatus = "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
 export async function checkFalJob(
   falModelId: string,
   falRequestId: string,
+  falStatusUrl?: string | null,
 ): Promise<{ status: FalStatus; resultUrl?: string }> {
-  const statusRes = await fetch(
-    `${FAL_BASE}/${falModelId}/requests/${falRequestId}/status`,
-    { headers: falHeaders() },
-  );
-  if (!statusRes.ok) throw new Error(`FAL status check failed: ${statusRes.status}`);
-  const { status } = await statusRes.json() as { status: string };
+  const key = process.env.FAL_KEY;
+  if (!key) throw new Error("FAL_KEY is not configured");
+  const headers: HeadersInit = {
+    Authorization: `Key ${key}`,
+    Accept: "application/json",
+  };
 
-  if (status === "COMPLETED") {
-    const resultRes = await fetch(
-      `${FAL_BASE}/${falModelId}/requests/${falRequestId}`,
-      { headers: falHeaders() },
-    );
-    if (!resultRes.ok) throw new Error(`FAL result fetch failed: ${resultRes.status}`);
-    const result = await resultRes.json() as {
-      images?: { url: string }[];
-      video?: { url: string };
-    };
-    const resultUrl = result.images?.[0]?.url ?? result.video?.url;
-    return { status: "COMPLETED", resultUrl };
+  const statusUrl = falStatusUrl
+    ?? `https://queue.fal.run/${falModelId}/requests/${falRequestId}/status`;
+
+  const statusRes = await fetch(statusUrl, { headers });
+  if (!statusRes.ok) {
+    const errText = await statusRes.text().catch(() => "");
+    throw new Error(`FAL status check failed: ${statusRes.status} ${errText}`);
+  }
+  const body = await statusRes.json() as {
+    status: string;
+    response_url?: string;
+    output?: { images?: { url: string }[]; video?: { url: string } };
+    images?: { url: string }[];
+    video?: { url: string };
+  };
+  console.log("[fal] status body:", JSON.stringify(body));
+
+  if (body.status === "COMPLETED") {
+    // First: try to extract the result directly from the status body.
+    // FAL embeds output in the status response for some models (e.g. WAN).
+    const inlineOut = body.output ?? body;
+    const inlineUrl = inlineOut.images?.[0]?.url ?? inlineOut.video?.url;
+    if (inlineUrl) {
+      console.log("[fal] got URL from status body:", inlineUrl);
+      return { status: "COMPLETED", resultUrl: inlineUrl };
+    }
+
+    // Fallback: fetch from result endpoint. Try the normalized URL first
+    // (falStatusUrl with /status stripped), then the full-path URL.
+    // FAL normalises model IDs in queue URLs (e.g. fal-ai/wan/v2.1/text-to-video → fal-ai/wan),
+    // but the result endpoint may need the full model path.
+    const candidateUrls = [
+      ...(falStatusUrl ? [falStatusUrl.replace(/\/status$/, "")] : []),
+      body.response_url,
+      `https://queue.fal.run/${falModelId}/requests/${falRequestId}`,
+    ].filter((u): u is string => Boolean(u));
+    const uniqueUrls = [...new Set(candidateUrls)];
+
+    let lastErr = "";
+    for (const resultUrl of uniqueUrls) {
+      console.log("[fal] trying result URL:", resultUrl);
+      const resultRes = await fetch(resultUrl, { headers });
+      if (!resultRes.ok) {
+        const errText = await resultRes.text().catch(() => "");
+        console.log("[fal] result URL failed:", resultRes.status, errText);
+        lastErr = `${resultRes.status} ${errText}`;
+        continue;
+      }
+      const result = await resultRes.json() as {
+        images?: { url: string }[];
+        video?: { url: string };
+        output?: { images?: { url: string }[]; video?: { url: string } };
+      };
+      console.log("[fal] result json:", JSON.stringify(result));
+      const out = result.output ?? result;
+      const url = out.images?.[0]?.url ?? out.video?.url;
+      if (!url) {
+        console.log("[fal] result had no URL, keys:", Object.keys(result).join(", "));
+        continue;
+      }
+      return { status: "COMPLETED", resultUrl: url };
+    }
+    throw new Error(`FAL result fetch failed for all URLs. Last error: ${lastErr}`);
   }
 
-  if (status === "FAILED")      return { status: "FAILED" };
-  if (status === "IN_PROGRESS") return { status: "IN_PROGRESS" };
+  if (body.status === "FAILED") return { status: "FAILED" };
+  if (body.status === "IN_PROGRESS") return { status: "IN_PROGRESS" };
   return { status: "IN_QUEUE" };
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Montserrat, Open_Sans, Cormorant_Garamond, Jost } from "next/font/google";
+import { Geist, Geist_Mono, Montserrat, Inter, Open_Sans, Cormorant_Garamond, Jost } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,6 +15,14 @@ const geistMono = Geist_Mono({
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  display: "swap",
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500"],
   display: "swap",
 });
 
@@ -49,7 +57,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${openSans.variable} ${cormorant.variable} ${jost.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${montserrat.variable} ${inter.variable} ${openSans.variable} ${cormorant.variable} ${jost.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

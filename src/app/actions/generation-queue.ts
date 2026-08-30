@@ -18,16 +18,20 @@ const createGenerationJobSchema = z.object({
 
 export type CreateGenerationJobInput = z.infer<typeof createGenerationJobSchema>;
 
-export async function createGenerationJob(input: CreateGenerationJobInput) {
+export async function createGenerationJob(
+  input: CreateGenerationJobInput,
+): Promise<{ jobId: string } | { error: string }> {
   const session = await auth();
-  if (!session?.user || !ALLOWED.has(session.user.role)) throw new Error("Forbidden");
+  if (!session?.user || !ALLOWED.has(session.user.role)) {
+    return { error: "You don't have permission to generate content." };
+  }
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: session.user.tenantId },
     select: { syntheticGenerationEnabled: true },
   });
   if (!tenant?.syntheticGenerationEnabled) {
-    throw new Error("Synthetic generation is not enabled for this tenant");
+    return { error: "AI generation is not yet enabled for your account. Contact support." };
   }
 
   const parsed = createGenerationJobSchema.parse(input);
@@ -43,13 +47,18 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
     }
   }
 
-  let digitalModelLoraKey: string | null = null;
+  // If a digital model is selected, merge its locked identity parameters.
+  // Model parameters take precedence over whatever the user submitted for appearance fields.
+  let mergedParameters = { ...parsed.parameters };
   if (parsed.digitalModelId) {
     const model = await prisma.digitalModel.findFirst({
       where: { id: parsed.digitalModelId, tenantId: session.user.tenantId },
+      select: { parameters: true },
     });
-    if (!model) throw new Error("Digital model not found");
-    digitalModelLoraKey = model.identityAssetKey;
+    if (!model) return { error: "Digital model not found." };
+    if (model.parameters && typeof model.parameters === "object") {
+      mergedParameters = { ...mergedParameters, ...model.parameters };
+    }
   }
 
   const job = await prisma.generationJob.create({
@@ -61,23 +70,24 @@ export async function createGenerationJob(input: CreateGenerationJobInput) {
       poseReferenceS3Key: parsed.poseReferenceS3Key ?? null,
       outputType:         parsed.outputType,
       status:             "PENDING",
-      parameters:         parsed.parameters,
+      parameters:         mergedParameters,
     },
   });
 
   try {
-    const { falRequestId, falModelId } = await submitToFal(
+    const { falRequestId, falModelId, falStatusUrl } = await submitToFal(
       job.prompt,
       job.outputType,
-      job.parameters as Record<string, unknown>,
+      mergedParameters as Record<string, unknown>,
     );
     await prisma.generationJob.update({
       where: { id: job.id },
-      data: { falRequestId, falModelId },
+      data: { falRequestId, falModelId, falStatusUrl: falStatusUrl ?? null },
     });
   } catch (err) {
     await prisma.generationJob.update({ where: { id: job.id }, data: { status: "FAILED" } });
-    throw err;
+    const msg = err instanceof Error ? err.message : "Generation service error. Please try again.";
+    return { error: msg };
   }
 
   return { jobId: job.id };

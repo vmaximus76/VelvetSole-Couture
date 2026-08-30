@@ -166,7 +166,9 @@ model DigitalModel {
   id               String   @id @default(uuid())
   tenantId         String
   name             String
-  identityAssetKey String   // S3 key for trained LoRA weights / embedding
+  bio              String?
+  parameters       Json?    // Locked appearance preset (ethnicity, skinTone, hairColor, hairType, age, subject)
+  identityAssetKey String?  // Reserved for future LoRA weights
   createdAt        DateTime @default(now())
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id])
@@ -186,6 +188,7 @@ model GenerationJob {
   resultS3Url         String?
   falRequestId        String?
   falModelId          String?
+  falStatusUrl        String?
   promotedBaseVideoId String?
   createdAt           DateTime @default(now())
 

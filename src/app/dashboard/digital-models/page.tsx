@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
 import { listDigitalModels } from "@/app/actions/digital-models";
+import { DigitalModelsClient } from "@/components/digital-models/DigitalModelsClient";
 
 export const metadata = { title: "Digital Models — VelvetSole Couture" };
 
@@ -12,11 +13,5 @@ export default async function DigitalModelsPage() {
 
   const models = await listDigitalModels();
 
-  return (
-    <div className="px-8 py-12">
-      <h1>Digital Models</h1>
-      <p>{models.length} model(s) — UI pending mockup</p>
-      <pre className="text-xs mt-4">{JSON.stringify(models, null, 2)}</pre>
-    </div>
-  );
+  return <DigitalModelsClient initialModels={models} />;
 }

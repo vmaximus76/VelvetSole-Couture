@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import { useViewerStore, type VariantKey } from "@/store/viewerStore";
 
 // ── Data ────────────────────────────────────────────────────────────────────
@@ -36,7 +35,7 @@ function arcOffsetY(i: number, total: number, amplitude = 16): number {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function BoutiqueViewer() {
+export function BoutiqueViewer({ onExit }: { onExit?: () => void }) {
   const { activeVariant, setActiveVariant } = useViewerStore();
   const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
   const [swatchesVisible, setSwatchesVisible] = useState(true);
@@ -61,7 +60,7 @@ export function BoutiqueViewer() {
       style={{
         position: "relative",
         width: "100%",
-        height: "100vh",
+        height: "100%",
         overflow: "hidden",
         background: "linear-gradient(148deg, #1a1520 0%, #111012 55%, #0d0b0e 100%)",
         userSelect: "none",
@@ -92,9 +91,10 @@ export function BoutiqueViewer() {
               gap: 0,
             }}
           >
-            {/* Exit link */}
-            <Link
-              href="/"
+            {/* Exit button */}
+            <button
+              type="button"
+              onClick={onExit}
               style={{
                 position: "absolute",
                 left: 24,
@@ -103,13 +103,18 @@ export function BoutiqueViewer() {
                 letterSpacing: "0.10em",
                 textTransform: "uppercase",
                 color: "rgba(237,233,228,0.30)",
-                textDecoration: "none",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
                 fontFamily: "var(--font-jost), system-ui, sans-serif",
                 transition: "color 0.2s",
+                padding: 0,
               }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(237,233,228,0.75)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(237,233,228,0.30)"; }}
             >
               ← Exit
-            </Link>
+            </button>
 
             {/* Swatch arc */}
             <div style={{ display: "flex", alignItems: "flex-end", gap: 12, paddingBottom: 4 }}>

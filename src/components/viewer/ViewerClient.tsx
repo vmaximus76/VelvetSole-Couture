@@ -42,8 +42,10 @@ export function ViewerClient({
   const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
   const [activeDial, setActiveDial] = useState<string | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
-  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const idleTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCount   = useRef(0);
+  const MAX_POLLS   = 200; // ~13 minutes at 4s interval before giving up
 
   const resetIdle = useCallback(() => {
     setRailHidden(false);
@@ -56,6 +58,12 @@ export function ViewerClient({
     if (status === "COMPLETED" || status === "FAILED") return;
 
     pollTimer.current = setInterval(async () => {
+      pollCount.current += 1;
+      if (pollCount.current > MAX_POLLS) {
+        if (pollTimer.current) clearInterval(pollTimer.current);
+        setStatus("FAILED");
+        return;
+      }
       try {
         const res = await fetch(`/api/job/${jobId}`);
         if (!res.ok) return;
@@ -189,7 +197,6 @@ export function ViewerClient({
         padding: "12px 24px",
       }}>
         <div style={{
-          aspectRatio: "16/9",
           maxHeight: "100%",
           maxWidth: "100%",
           background: "#18141a",
@@ -200,11 +207,14 @@ export function ViewerClient({
           position: "relative",
           overflow: "hidden",
         }}>
+          {status === "COMPLETED" && !resultUrl && (
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: "0.66rem", letterSpacing: "0.20em", textTransform: "uppercase", color: "rgba(192,56,74,0.7)", marginBottom: 8 }}>Generation Failed</p>
+              <Link href="/generate" style={{ fontSize: "0.70rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(237,233,228,0.35)", textDecoration: "none" }}>Try Again →</Link>
+            </div>
+          )}
           {status === "COMPLETED" && resultUrl ? (
-            outputType === "IMAGE" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resultUrl} alt={prompt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
+            /\.(mp4|webm|mov)(\?|$)/i.test(resultUrl) ? (
               <video
                 src={resultUrl}
                 autoPlay
@@ -213,8 +223,11 @@ export function ViewerClient({
                 controls
                 controlsList="nodownload"
                 disablePictureInPicture
-                style={{ width: "100%", height: "100%" }}
+                style={{ maxHeight: "calc(100vh - 200px)", maxWidth: "100%", display: "block" }}
               />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resultUrl} alt={prompt} style={{ maxHeight: "calc(100vh - 200px)", maxWidth: "100%", display: "block", objectFit: "contain" }} />
             )
           ) : status === "FAILED" ? (
             <div style={{ textAlign: "center" }}>
